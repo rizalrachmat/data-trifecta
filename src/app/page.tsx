@@ -6,6 +6,7 @@ import { StatusOutstandingTab } from '@/components/tabs/StatusOutstandingTab';
 import { ProgressTab } from '@/components/tabs/ProgressTab';
 import { PivotResultTab } from '@/components/tabs/PivotResultTab';
 import { UploadHistoryTab } from '@/components/tabs/UploadHistoryTab';
+import MasterDataUpload from '@/components/tabs/MasterDataUpload';
 import { Toast } from '@/components/ui/Toast';
 import {
   SnapshotMeta,
@@ -14,8 +15,7 @@ import {
   PivotResponse,
   UploadPreviewData,
 } from '@/lib/types';
-import MasterDataUpload from '@/components/tabs/MasterDataUpload';
-    
+
 export default function Home() {
   const [activeTab, setActiveTab] = useState('outstanding');
   const [snapshots, setSnapshots] = useState<SnapshotMeta[]>([]);

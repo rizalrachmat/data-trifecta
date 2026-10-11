@@ -1,12 +1,12 @@
 import * as XLSX from 'xlsx';
-import { OFFICIAL_AREAS, NO_AREA, NO_BRANCH } from './constants';
+import { NO_AREA, NO_BRANCH } from './constants';
 import { toISODate } from './date-utils';
-import { UploadPreviewData } from './types';
 
 // Normalize header text for fuzzy matching
 export const normalizeKey = (s: unknown): string =>
   String(s ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
 
+// Normalisasi nomor akun: buang spasi dan nol di depan
 export const normAcc = (v: unknown): string =>
   String(v ?? '').trim().replace(/^0+/, '');
 
@@ -33,11 +33,9 @@ export interface ParsedExcelResult {
   }>;
 }
 
-
-
 export function parseExcelBuffer(buffer: Buffer | ArrayBuffer, fileName: string): ParsedExcelResult {
   const wb = XLSX.read(buffer, { type: 'buffer', cellDates: true });
-  
+
   for (const sheetName of wb.SheetNames) {
     const ws = wb.Sheets[sheetName];
     if (!ws) continue;
@@ -54,7 +52,7 @@ export function parseExcelBuffer(buffer: Buffer | ArrayBuffer, fileName: string)
       const iD = heads.indexOf('dcn');
       const iA = heads.indexOf('areaname') >= 0 ? heads.indexOf('areaname') : heads.indexOf('area');
 
-      // Both DCN and Area_Name are required
+      // Hanya DCN yang wajib. Area/Branch diisi dari master Sold To bila kosong.
       if (iD < 0) continue;
 
       const iB = heads.indexOf('branchname') >= 0 ? heads.indexOf('branchname') : heads.indexOf('branch');
@@ -66,6 +64,7 @@ export function parseExcelBuffer(buffer: Buffer | ArrayBuffer, fileName: string)
       const iValid = heads.indexOf('validtrifectadcncontact') >= 0
         ? heads.indexOf('validtrifectadcncontact')
         : heads.indexOf('validtrifecta');
+      const iAcc = heads.indexOf('dealercustomernumber');
 
       const seenDcns = new Set<string>();
       const rows: ParsedExcelResult['rows'] = [];
@@ -110,15 +109,18 @@ export function parseExcelBuffer(buffer: Buffer | ArrayBuffer, fileName: string)
         const dealerName = iName >= 0 ? String(row[iName] ?? '').trim() : '';
         const productVertical = iV >= 0 ? String(row[iV] ?? '').trim() : '';
         const createdDate = iDate >= 0 ? toISODate(row[iDate]) : '';
+        const accountNo = normAcc(
+          iAcc >= 0 && row[iAcc] ? row[iAcc] : (dcn.split('|')[1] ?? '')
+        );
 
         rows.push({
           dcn,
+          accountNo,
           dealerName,
           area,
           branch,
           productVertical,
           createdDate,
-          accountNo: normAcc(dcn.split('|')[1] ?? ''),
         });
       }
 
@@ -158,5 +160,7 @@ export function parseExcelBuffer(buffer: Buffer | ArrayBuffer, fileName: string)
     }
   }
 
-  throw new Error('Kolom DCN tidak ditemukan. Untuk file Sold To atau Data Contact,gunakan bagian "Data Master".');
+  throw new Error(
+    'Kolom DCN tidak ditemukan. Untuk file Sold To atau Data Contact, gunakan bagian "Data Master".'
+  );
 }

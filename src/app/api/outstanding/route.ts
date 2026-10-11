@@ -80,7 +80,7 @@ export async function GET(req: NextRequest) {
         noAreaCount++;
       }
 
-      if (r.contactInfo === '') {
+      if (!r.contactCount) {
         noContactCount++;
       }
 

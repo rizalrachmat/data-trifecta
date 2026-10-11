@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { OutstandingResponse, SnapshotMeta } from '@/lib/types';
+import { OutstandingResponse, SnapshotMeta, DcnItem } from '@/lib/types';
 import { formatDateID, formatShortDateID, formatNumberID } from '@/lib/date-utils';
 import { NO_AREA, NO_BRANCH } from '@/lib/constants';
 import { Search } from 'lucide-react';
@@ -14,6 +14,59 @@ interface StatusOutstandingTabProps {
   isLoading: boolean;
 }
 
+// Tabel daftar DCN (dipakai di tampilan Per Area dan Per Cabang)
+const DcnSubTable: React.FC<{ records: DcnItem[] }> = ({ records }) => (
+  <div className="tw">
+    <table>
+      <thead>
+        <tr>
+          <th>DCN</th>
+          <th>Dealer Customer Name</th>
+          <th>Created Date</th>
+          <th className="n">Umur (hari)</th>
+          <th>Kontak</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {records
+          .slice()
+          .sort((a, b) => (a.createdDate || '').localeCompare(b.createdDate || ''))
+          .map((rec) => {
+            const noContact = !rec.contactCount;
+            const noArea = rec.area === NO_AREA;
+            const extra = (rec.contactCount ?? 0) > 1 ? ` (+${(rec.contactCount ?? 1) - 1})` : '';
+            return (
+              <tr key={rec.id}>
+                <td className="mono">{rec.dcn}</td>
+                <td>{rec.dealerName}</td>
+                <td>{rec.createdDate ? formatShortDateID(rec.createdDate) : '-'}</td>
+                <td className="n">
+                  {rec.ageDays !== undefined ? formatNumberID(rec.ageDays) : '-'}
+                </td>
+                <td>
+                  {rec.contactInfo ? `${rec.contactInfo}${extra}` : '-'}
+                </td>
+                <td>
+                  {noArea && (
+                    <span className="pill bad" style={{ marginRight: 4 }}>
+                      Area tidak ditemukan
+                    </span>
+                  )}
+                  {noContact ? (
+                    <span className="pill bad">Kontak belum ada</span>
+                  ) : (
+                    <span className="pill good">Ada kontak</span>
+                  )}
+                </td>
+              </tr>
+            );
+          })}
+      </tbody>
+    </table>
+  </div>
+);
+
 export const StatusOutstandingTab: React.FC<StatusOutstandingTabProps> = ({
   data,
   snapshots,
@@ -23,6 +76,7 @@ export const StatusOutstandingTab: React.FC<StatusOutstandingTabProps> = ({
 }) => {
   const [view, setView] = useState<'area' | 'cabang'>('area');
   const [searchQuery, setSearchQuery] = useState('');
+  const [onlyNoContact, setOnlyNoContact] = useState(false);
   const [openKeys, setOpenKeys] = useState<Set<string>>(new Set());
 
   // Filter detailed snapshots for the dropdown
@@ -44,17 +98,19 @@ export const StatusOutstandingTab: React.FC<StatusOutstandingTabProps> = ({
 
   const q = searchQuery.trim().toLowerCase();
 
-  // Filter records based on search query
+  // Filter records based on search query and contact filter
   const filteredRecords = useMemo(() => {
     if (!data?.records) return [];
-    if (!q) return data.records;
-    return data.records.filter((r) =>
-      [r.dcn, r.dealerName, r.area, r.branch, r.productVertical]
+    let list = data.records;
+    if (onlyNoContact) list = list.filter((r) => !r.contactCount);
+    if (!q) return list;
+    return list.filter((r) =>
+      [r.dcn, r.dealerName, r.area, r.branch, r.productVertical, r.contactInfo || '']
         .join(' ')
         .toLowerCase()
         .includes(q)
     );
-  }, [data?.records, q]);
+  }, [data?.records, q, onlyNoContact]);
 
   // Group records by Area and Branch
   const areaGroups = useMemo(() => {
@@ -131,8 +187,16 @@ export const StatusOutstandingTab: React.FC<StatusOutstandingTabProps> = ({
     );
   }
 
-  const { snapshot, prevSnapshot, totalOutstanding, diff, topArea, avgAgeDays, noAreaCount } =
-    data;
+  const {
+    snapshot,
+    prevSnapshot,
+    totalOutstanding,
+    diff,
+    topArea,
+    avgAgeDays,
+    noAreaCount,
+    noContactCount,
+  } = data;
 
   const totalFiltered = filteredRecords.length;
   const grandTotalAll = data.records.length;
@@ -160,7 +224,7 @@ export const StatusOutstandingTab: React.FC<StatusOutstandingTabProps> = ({
         </span>
       </div>
 
-      {/* 4 KPI Cards */}
+      {/* KPI Cards */}
       <div className="kpis">
         <div className="kpi">
           <div className="l">Total outstanding</div>
@@ -199,15 +263,34 @@ export const StatusOutstandingTab: React.FC<StatusOutstandingTabProps> = ({
             hari sejak Created Date ({(avgAgeDays / 365).toFixed(1)} tahun)
           </div>
         </div>
+
+        <div className="kpi">
+          <div className="l">Belum ada kontak</div>
+          <div className="v">{formatNumberID(noContactCount ?? 0)}</div>
+          <div className="s">
+            dari {formatNumberID(grandTotalAll)} DCN tidak ada di Data Contact
+          </div>
+        </div>
       </div>
 
       {/* Warning Notice if any DCN has no area/branch */}
       {noAreaCount > 0 && (
         <div className="notice">
-          <b>{noAreaCount} DCN belum punya Area dan Cabang</b> di data sumber,
-          jadi dikelompokkan sebagai &quot;{NO_AREA}&quot;. Lengkapi kolom
-          Area_Name dan Branch_Name di file sumber agar masuk hitungan area yang
-          benar.
+          <b>{noAreaCount} DCN belum punya Area dan Cabang</b> karena nomor
+          akunnya tidak ditemukan di data Sold To, jadi dikelompokkan sebagai
+          &quot;{NO_AREA}&quot;. Perbarui data Sold To di bagian Data Master,
+          lalu upload ulang file Cross Tab.
+        </div>
+      )}
+
+      {(noContactCount ?? 0) > 0 && (
+        <div className="notice">
+          <b>
+            {formatNumberID(noContactCount ?? 0)} dari {formatNumberID(grandTotalAll)} DCN
+            belum punya kontak
+          </b>{' '}
+          di Data Contact. Centang &quot;Hanya yang belum ada kontak&quot; untuk
+          melihat daftarnya.
         </div>
       )}
 
@@ -247,11 +330,23 @@ export const StatusOutstandingTab: React.FC<StatusOutstandingTabProps> = ({
             <input
               id="f-q"
               type="search"
-              placeholder="Cari DCN, dealer, area, cabang"
+              placeholder="Cari DCN, dealer, area, cabang, kontak"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               style={{ width: '240px', maxWidth: '100%' }}
             />
+          </label>
+
+          <label
+            className="fld"
+            style={{ flexDirection: 'row', alignItems: 'center', gap: '6px' }}
+          >
+            <input
+              type="checkbox"
+              checked={onlyNoContact}
+              onChange={(e) => setOnlyNoContact(e.target.checked)}
+            />
+            Hanya yang belum ada kontak
           </label>
         </div>
 
@@ -316,7 +411,10 @@ export const StatusOutstandingTab: React.FC<StatusOutstandingTabProps> = ({
                         {/* Branch rows under this area if open */}
                         {isAreaOpen &&
                           Array.from(group.branches.entries())
-                            .sort((x, y) => y[1].length - x[1].length || x[0].localeCompare(y[0]))
+                            .sort(
+                              (x, y) =>
+                                y[1].length - x[1].length || x[0].localeCompare(y[0])
+                            )
                             .map(([branchName, branchRecords]) => {
                               const branchKey = `b:${areaName}|${branchName}`;
                               const isBranchOpen = openKeys.has(branchKey);
@@ -335,9 +433,7 @@ export const StatusOutstandingTab: React.FC<StatusOutstandingTabProps> = ({
                               return (
                                 <React.Fragment key={branchKey}>
                                   <tr
-                                    className={`grp ${
-                                      isBranchOpen ? 'open' : ''
-                                    }`}
+                                    className={`grp ${isBranchOpen ? 'open' : ''}`}
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       toggleKey(branchKey);
@@ -361,51 +457,7 @@ export const StatusOutstandingTab: React.FC<StatusOutstandingTabProps> = ({
                                   {isBranchOpen && (
                                     <tr className="sub">
                                       <td colSpan={4} style={{ padding: 0 }}>
-                                        <div className="tw">
-                                          <table>
-                                            <thead>
-                                              <tr>
-                                                <th>DCN</th>
-                                                <th>Dealer Customer Name</th>
-                                                <th>Created Date</th>
-                                                <th className="n">
-                                                  Umur (hari)
-                                                </th>
-                                              </tr>
-                                            </thead>
-                                            <tbody>
-                                              {branchRecords
-                                                .slice()
-                                                .sort((a, b) =>
-                                                  (a.createdDate || '').localeCompare(
-                                                    b.createdDate || ''
-                                                  )
-                                                )
-                                                .map((rec) => (
-                                                  <tr key={rec.id}>
-                                                    <td className="mono">
-                                                      {rec.dcn}
-                                                    </td>
-                                                    <td>{rec.dealerName}</td>
-                                                    <td>
-                                                      {rec.createdDate
-                                                        ? formatShortDateID(
-                                                            rec.createdDate
-                                                          )
-                                                        : '-'}
-                                                    </td>
-                                                    <td className="n">
-                                                      {rec.ageDays !== undefined
-                                                        ? formatNumberID(
-                                                            rec.ageDays
-                                                          )
-                                                        : '-'}
-                                                    </td>
-                                                  </tr>
-                                                ))}
-                                            </tbody>
-                                          </table>
-                                        </div>
+                                        <DcnSubTable records={branchRecords} />
                                       </td>
                                     </tr>
                                   )}
@@ -422,10 +474,7 @@ export const StatusOutstandingTab: React.FC<StatusOutstandingTabProps> = ({
                   const isBranchOpen = openKeys.has(branchKey);
                   const portion =
                     grandTotalAll > 0
-                      ? (
-                          (branchRecords.length / grandTotalAll) *
-                          100
-                        ).toFixed(0)
+                      ? ((branchRecords.length / grandTotalAll) * 100).toFixed(0)
                       : '0';
                   const barWidth = Math.max(
                     2,
@@ -456,45 +505,7 @@ export const StatusOutstandingTab: React.FC<StatusOutstandingTabProps> = ({
                       {isBranchOpen && (
                         <tr className="sub">
                           <td colSpan={4} style={{ padding: 0 }}>
-                            <div className="tw">
-                              <table>
-                                <thead>
-                                  <tr>
-                                    <th>DCN</th>
-                                    <th>Dealer Customer Name</th>
-                                    <th>Created Date</th>
-                                    <th className="n">Umur (hari)</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {branchRecords
-                                    .slice()
-                                    .sort((a, b) =>
-                                      (a.createdDate || '').localeCompare(
-                                        b.createdDate || ''
-                                      )
-                                    )
-                                    .map((rec) => (
-                                      <tr key={rec.id}>
-                                        <td className="mono">{rec.dcn}</td>
-                                        <td>{rec.dealerName}</td>
-                                        <td>
-                                          {rec.createdDate
-                                            ? formatShortDateID(
-                                                rec.createdDate
-                                              )
-                                            : '-'}
-                                        </td>
-                                        <td className="n">
-                                          {rec.ageDays !== undefined
-                                            ? formatNumberID(rec.ageDays)
-                                            : '-'}
-                                        </td>
-                                      </tr>
-                                    ))}
-                                </tbody>
-                              </table>
-                            </div>
+                            <DcnSubTable records={branchRecords} />
                           </td>
                         </tr>
                       )}
@@ -510,14 +521,14 @@ export const StatusOutstandingTab: React.FC<StatusOutstandingTabProps> = ({
                     className="hint"
                     style={{ padding: '24px', textAlign: 'center' }}
                   >
-                    Tidak ada DCN yang cocok dengan pencarian.
+                    Tidak ada DCN yang cocok dengan pencarian atau filter.
                   </td>
                 </tr>
               )}
 
               {/* Grand Total row */}
               <tr className="tot">
-                <td>Total {q ? '(hasil pencarian)' : ''}</td>
+                <td>Total {q || onlyNoContact ? '(hasil filter)' : ''}</td>
                 <td className="n">{formatNumberID(totalFiltered)}</td>
                 <td className="n">
                   {grandTotalAll > 0

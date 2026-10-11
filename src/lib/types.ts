@@ -31,8 +31,8 @@ export interface OutstandingResponse {
   topArea: { name: string; count: number } | null;
   avgAgeDays: number;
   noAreaCount: number;
-  records: DcnItem[];
   noContactCount?: number;
+  records: DcnItem[];
 }
 
 export interface ProgressPeriod {
@@ -97,14 +97,13 @@ export interface UploadPreviewData {
   }>;
   rows: Array<{
     dcn: string;
+    accountNo?: string;
     dealerName: string;
     area: string;
     branch: string;
     productVertical: string;
     createdDate: string;
-    accountNo?: string;
     contactCount?: number;
     contactInfo?: string;
   }>;
 }
-

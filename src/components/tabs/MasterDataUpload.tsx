@@ -30,7 +30,9 @@ function toContacts(aoa: any[][]) {
   const g = (n: string) => h.indexOf(n);
   const iS = g('soldto');
   const iId = g('contactpersonid');
-  if (iS < 0 || iId < 0) throw new Error('Kolom SOLD TO / CONTACT PERSON ID tidak ditemukan. Ini bukan file Data Contact.');
+  if (iS < 0 || iId < 0) {
+    throw new Error('Kolom SOLD TO / CONTACT PERSON ID tidak ditemukan. Ini bukan file Data Contact.');
+  }
   return aoa
     .slice(1)
     .filter((r) => acc(r[iS]) && str(r[iId]))
@@ -52,8 +54,13 @@ export default function MasterDataUpload() {
   const [msg, setMsg] = useState<Record<string, string>>({});
 
   const loadCounts = () =>
-    fetch('/api/master').then((r) => r.json()).then((j) => j.success && setCounts(j)).catch(() => {});
-  useEffect(() => { loadCounts(); }, []);
+    fetch('/api/master')
+      .then((r) => r.json())
+      .then((j) => j.success && setCounts(j))
+      .catch(() => {});
+  useEffect(() => {
+    loadCounts();
+  }, []);
 
   async function handle(kind: 'soldto' | 'contact', file: File | undefined) {
     if (!file) return;
@@ -70,7 +77,9 @@ export default function MasterDataUpload() {
         });
         const j = await res.json();
         if (!j.success) throw new Error(j.error || 'Gagal menyimpan');
-        set(`Menyimpan ${Math.min(i + CHUNK, rows.length).toLocaleString('id-ID')} / ${rows.length.toLocaleString('id-ID')} baris...`);
+        set(
+          `Menyimpan ${Math.min(i + CHUNK, rows.length).toLocaleString('id-ID')} / ${rows.length.toLocaleString('id-ID')} baris...`
+        );
       }
       set(`Selesai: ${rows.length.toLocaleString('id-ID')} baris tersimpan.`);
       loadCounts();
@@ -80,21 +89,29 @@ export default function MasterDataUpload() {
   }
 
   const box = (kind: 'soldto' | 'contact', title: string, count?: number) => (
-    <div style={{ border: '1px solid #334155', borderRadius: 12, padding: 16 }}>
-      <div style={{ fontWeight: 600 }}>{title}</div>
-      <div style={{ fontSize: 13, opacity: 0.7, margin: '4px 0 10px' }}>
-        Tersimpan: {count !== undefined ? count.toLocaleString('id-ID') : '-'} baris. Upload baru akan menggantikan data lama.
+    <section className="panel">
+      <div className="panel-h">
+        <h2>{title}</h2>
+        <span className="hint">
+          Tersimpan: {count !== undefined ? count.toLocaleString('id-ID') : '-'} baris. Upload baru
+          menggantikan data lama.
+        </span>
       </div>
-      <input type="file" accept=".xlsx,.xls" onChange={(e) => handle(kind, e.target.files?.[0])} />
-      {msg[kind] && <div style={{ fontSize: 13, marginTop: 8 }}>{msg[kind]}</div>}
-    </div>
+      <div className="panel-b">
+        <input
+          type="file"
+          accept=".xlsx,.xls"
+          onChange={(e) => handle(kind, e.target.files?.[0])}
+        />
+        {msg[kind] && <div className="hint" style={{ marginTop: 8 }}>{msg[kind]}</div>}
+      </div>
+    </section>
   );
 
   return (
-    <div style={{ display: 'grid', gap: 12, marginTop: 16 }}>
-      <div style={{ fontWeight: 600 }}>Data Master</div>
-      {box('soldto', 'Sold To (Account_No, Branch_Name, Area_Name)', counts?.soldTo)}
-      {box('contact', 'Data Contact (SOLD TO, nama, email, HP)', counts?.contact)}
-    </div>
+    <>
+      {box('soldto', 'Data Master: Sold To (Account_No, Branch_Name, Area_Name)', counts?.soldTo)}
+      {box('contact', 'Data Master: Data Contact (SOLD TO, nama, email, HP)', counts?.contact)}
+    </>
   );
 }

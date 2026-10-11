@@ -138,6 +138,10 @@ export const UploadHistoryTab: React.FC<UploadHistoryTabProps> = ({
   // Reversed snapshots for history table (newest first)
   const reversedSnapshots = [...snapshots].reverse();
 
+  const noContactPreview = pendingPreview
+    ? pendingPreview.rows.filter((r) => !r.contactCount).length
+    : 0;
+
   return (
     <>
       <input
@@ -195,8 +199,14 @@ export const UploadHistoryTab: React.FC<UploadHistoryTabProps> = ({
 
           <ul className="hint" style={{ margin: '14px 0 0', paddingLeft: '18px' }}>
             <li>
-              Kolom wajib: <b>DCN</b> dan <b>Area_Name</b>. Kolom lain dipakai bila
-              ada: <i>Branch_Name, Dealer Customer Name, Product Vertical, Created Date, Valid Trifecta DCN Contact</i>.
+              Kolom wajib: <b>DCN</b>. <i>Area_Name</i> dan <i>Branch_Name</i> otomatis
+              diisi dari data Sold To bila tidak ada di file (upload Sold To dan Data
+              Contact dulu di bagian Data Master di bawah). Kolom lain dipakai bila ada:{' '}
+              <i>
+                Dealer Customer Name, Product Vertical, Created Date, Valid Trifecta DCN
+                Contact
+              </i>
+              .
             </li>
             <li>
               Hanya baris dengan <b>Valid Trifecta DCN Contact = No</b> yang dihitung
@@ -243,6 +253,10 @@ export const UploadHistoryTab: React.FC<UploadHistoryTabProps> = ({
               <div className="kpi">
                 <div className="l">Tanpa Area</div>
                 <div className="v">{formatNumberID(pendingPreview.noAreaCount)}</div>
+              </div>
+              <div className="kpi">
+                <div className="l">Belum ada kontak</div>
+                <div className="v">{formatNumberID(noContactPreview)}</div>
               </div>
             </div>
 

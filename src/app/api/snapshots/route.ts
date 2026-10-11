@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { SnapshotMeta } from '@/lib/types';
 
+export const maxDuration = 60;
+
 export async function GET() {
   try {
     const snapshots = await db.snapshot.findMany({
@@ -100,7 +102,7 @@ export async function POST(req: NextRequest) {
       };
     });
 
-    // Chunk insert to avoid SQLite parameter limit (max 999 or 32766 parameters)
+    // Insert per potongan agar tidak melewati batas parameter database
     const CHUNK_SIZE = 500;
     for (let i = 0; i < dcnRecords.length; i += CHUNK_SIZE) {
       const chunk = dcnRecords.slice(i, i + CHUNK_SIZE);

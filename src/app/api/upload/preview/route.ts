@@ -4,6 +4,8 @@ import { parseExcelBuffer } from '@/lib/excel-parser';
 import { OFFICIAL_AREAS, NO_AREA, NO_BRANCH } from '@/lib/constants';
 import { UploadPreviewData } from '@/lib/types';
 
+export const maxDuration = 60;
+
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
@@ -21,17 +23,26 @@ export async function POST(req: NextRequest) {
 
     // Lengkapi Area, Branch, dan Kontak dari data master
     const accNos = Array.from(new Set(parsed.rows.map((r) => r.accountNo).filter(Boolean)));
-    const [soldTos, contacts] = await Promise.all([
-      db.soldTo.findMany({ where: { accountNo: { in: accNos } } }),
-      db.contact.findMany({ where: { soldTo: { in: accNos } } }),
-    ]);
-    const soldMap = new Map(soldTos.map((s) => [s.accountNo, s]));
-    const contactMap = new Map<string, typeof contacts>();
-    for (const c of contacts) {
-      const list = contactMap.get(c.soldTo) ?? [];
-      list.push(c);
-      contactMap.set(c.soldTo, list);
+    const soldMap = new Map<string, { areaName: string; branchName: string }>();
+    const contactMap = new Map<string, Array<{ name: string; email: string; phone: string }>>();
+
+    const BATCH = 5000;
+    for (let i = 0; i < accNos.length; i += BATCH) {
+      const part = accNos.slice(i, i + BATCH);
+      const [soldTos, contacts] = await Promise.all([
+        db.soldTo.findMany({ where: { accountNo: { in: part } } }),
+        db.contact.findMany({ where: { soldTo: { in: part } } }),
+      ]);
+      for (const s of soldTos) {
+        soldMap.set(s.accountNo, { areaName: s.areaName, branchName: s.branchName });
+      }
+      for (const c of contacts) {
+        const list = contactMap.get(c.soldTo) ?? [];
+        list.push({ name: c.name, email: c.email, phone: c.phone });
+        contactMap.set(c.soldTo, list);
+      }
     }
+
     for (const r of parsed.rows) {
       const s = soldMap.get(r.accountNo);
       if (s) {
@@ -41,10 +52,12 @@ export async function POST(req: NextRequest) {
       const list = contactMap.get(r.accountNo) ?? [];
       r.contactCount = list.length;
       const best = list.find((c) => c.email || c.phone) ?? list[0];
-      r.contactInfo = best ? [best.name, best.email || best.phone].filter(Boolean).join(' · ') : '';
+      r.contactInfo = best
+        ? [best.name, best.email || best.phone].filter(Boolean).join(' · ')
+        : '';
     }
     parsed.noAreaCount = parsed.rows.filter((r) => r.area === NO_AREA).length;
-    
+
     // Check if snapshot with detected date already exists
     const existing = await db.snapshot.findUnique({
       where: { date: parsed.date },
