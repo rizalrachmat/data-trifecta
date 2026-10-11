@@ -1,0 +1,50 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Snapshot {
+  id          String       @id @default(cuid())
+  date        String       @unique // format "YYYY-MM-DD"
+  fileName    String?
+  type        String       // "RINCI" | "RINGKASAN"
+  uploadedAt  DateTime     @default(now())
+  uploadedBy  String?      @default("System")
+
+  dcnRecords  DcnRecord[]
+  areaCounts  AreaCount[]
+
+  @@index([date])
+}
+
+model DcnRecord {
+  id              String    @id @default(cuid())
+  snapshotId      String
+  snapshot        Snapshot  @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
+  dcn             String    // ID unik, misal "J210|1022839"
+  dealerName      String    // Dealer Customer Name
+  area            String    // misal "Java", "Sumatera", atau "Tanpa Area"
+  branch          String    // misal "Jakarta", "Medan", atau "Tanpa Cabang"
+  productVertical String    @default("")
+  createdDate     String?   // format "YYYY-MM-DD"
+
+  @@index([snapshotId, area, branch])
+  @@index([snapshotId, dcn])
+}
+
+model AreaCount {
+  id          String    @id @default(cuid())
+  snapshotId  String
+  snapshot    Snapshot  @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
+  area        String    // misal "Java", "Sumatera"
+  count       Int       // jumlah DCN
+
+  @@index([snapshotId])
+}
