@@ -7,6 +7,9 @@ import { UploadPreviewData } from './types';
 export const normalizeKey = (s: unknown): string =>
   String(s ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
 
+export const normAcc = (v: unknown): string =>
+  String(v ?? '').trim().replace(/^0+/, '');
+
 export interface ParsedExcelResult {
   fileName: string;
   sheetName: string;
@@ -19,13 +22,18 @@ export interface ParsedExcelResult {
   dateIsAuto: boolean;
   rows: Array<{
     dcn: string;
+    accountNo: string;
     dealerName: string;
     area: string;
     branch: string;
     productVertical: string;
     createdDate: string;
+    contactCount?: number;
+    contactInfo?: string;
   }>;
 }
+
+
 
 export function parseExcelBuffer(buffer: Buffer | ArrayBuffer, fileName: string): ParsedExcelResult {
   const wb = XLSX.read(buffer, { type: 'buffer', cellDates: true });
@@ -47,7 +55,7 @@ export function parseExcelBuffer(buffer: Buffer | ArrayBuffer, fileName: string)
       const iA = heads.indexOf('areaname') >= 0 ? heads.indexOf('areaname') : heads.indexOf('area');
 
       // Both DCN and Area_Name are required
-      if (iD < 0 || iA < 0) continue;
+      if (iD < 0) continue;
 
       const iB = heads.indexOf('branchname') >= 0 ? heads.indexOf('branchname') : heads.indexOf('branch');
       const iName = heads.indexOf('dealercustomername') >= 0
@@ -88,7 +96,7 @@ export function parseExcelBuffer(buffer: Buffer | ArrayBuffer, fileName: string)
         }
         seenDcns.add(dcn);
 
-        let area = String(row[iA] ?? '').trim();
+        let area = iA >= 0 ? String(row[iA] ?? '').trim() : '';
         if (!area) {
           area = NO_AREA;
           noAreaCount++;
@@ -110,6 +118,7 @@ export function parseExcelBuffer(buffer: Buffer | ArrayBuffer, fileName: string)
           branch,
           productVertical,
           createdDate,
+          accountNo: normAcc(dcn.split('|')[1] ?? ''),
         });
       }
 
@@ -149,5 +158,5 @@ export function parseExcelBuffer(buffer: Buffer | ArrayBuffer, fileName: string)
     }
   }
 
-  throw new Error('Kolom DCN dan Area_Name tidak ditemukan di sheet mana pun. Periksa file dan coba lagi.');
+  throw new Error('Kolom DCN tidak ditemukan. Untuk file Sold To atau Data Contact,gunakan bagian "Data Master".');
 }

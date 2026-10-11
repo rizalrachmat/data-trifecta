@@ -34,6 +34,9 @@ model DcnRecord {
   branch          String    // misal "Jakarta", "Medan", atau "Tanpa Cabang"
   productVertical String    @default("")
   createdDate     String?   // format "YYYY-MM-DD"
+  accountNo    String @default("")
+  contactCount Int    @default(0)
+  contactInfo  String @default("")
 
   @@index([snapshotId, area, branch])
   @@index([snapshotId, dcn])
@@ -47,4 +50,22 @@ model AreaCount {
   count       Int       // jumlah DCN
 
   @@index([snapshotId])
+}
+
+model SoldTo {
+  accountNo  String @id
+  branchName String @default("")
+  areaName   String @default("")
+}
+
+model Contact {
+  id              String @id @default(cuid())
+  contactPersonId String @unique
+  soldTo          String
+  name            String @default("")
+  email           String @default("")
+  phone           String @default("")
+  jobFunction     String @default("")
+
+  @@index([soldTo])
 }

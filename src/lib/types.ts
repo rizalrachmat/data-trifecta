@@ -17,6 +17,9 @@ export interface DcnItem {
   productVertical: string;
   createdDate: string | null;
   ageDays?: number;
+  accountNo?: string;
+  contactCount?: number;
+  contactInfo?: string;
 }
 
 export interface OutstandingResponse {
@@ -98,5 +101,9 @@ export interface UploadPreviewData {
     branch: string;
     productVertical: string;
     createdDate: string;
+    accountNo?: string;
+    contactCount?: number;
+    contactInfo?: string;
   }>;
 }
+
