@@ -32,6 +32,7 @@ export interface OutstandingResponse {
   avgAgeDays: number;
   noAreaCount: number;
   records: DcnItem[];
+  noContactCount?: number;
 }
 
 export interface ProgressPeriod {

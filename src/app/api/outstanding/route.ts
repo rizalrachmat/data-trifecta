@@ -62,6 +62,7 @@ export async function GET(req: NextRequest) {
     let totalAgeDays = 0;
     let recordsWithAge = 0;
     let noAreaCount = 0;
+    let noContactCount = 0;
     const areaCounts: Record<string, number> = {};
 
     const records = snapshot.dcnRecords.map((r) => {
@@ -79,6 +80,10 @@ export async function GET(req: NextRequest) {
         noAreaCount++;
       }
 
+      if (r.contactInfo === '') {
+        noContactCount++;
+      }
+
       areaCounts[r.area] = (areaCounts[r.area] || 0) + 1;
 
       return {
@@ -90,6 +95,9 @@ export async function GET(req: NextRequest) {
         productVertical: r.productVertical,
         createdDate: r.createdDate,
         ageDays,
+        accountNo: r.accountNo,
+        contactCount: r.contactCount,
+        contactInfo: r.contactInfo,
       };
     });
 
@@ -128,6 +136,7 @@ export async function GET(req: NextRequest) {
       topArea,
       avgAgeDays,
       noAreaCount,
+      noContactCount,
       records,
     };
 

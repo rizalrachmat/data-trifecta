@@ -14,7 +14,8 @@ import {
   PivotResponse,
   UploadPreviewData,
 } from '@/lib/types';
-
+import MasterDataUpload from '@/components/tabs/MasterDataUpload';
+    
 export default function Home() {
   const [activeTab, setActiveTab] = useState('outstanding');
   const [snapshots, setSnapshots] = useState<SnapshotMeta[]>([]);
@@ -290,22 +291,25 @@ export default function Home() {
         )}
 
         {activeTab === 'upload' && (
-          <UploadHistoryTab
-            snapshots={snapshots}
-            pendingPreview={pendingPreview}
-            onPreviewReceived={setPendingPreview}
-            onSnapshotSaved={async (savedDate) => {
-              setPendingPreview(null);
-              setSelectedDate(savedDate);
-              await fetchSnapshots();
-              setActiveTab('outstanding');
-            }}
-            onSnapshotDeleted={async () => {
-              await fetchSnapshots();
-              fetchOutstanding();
-            }}
-            showToast={showToast}
-          />
+          <>
+            <UploadHistoryTab
+              snapshots={snapshots}
+              pendingPreview={pendingPreview}
+              onPreviewReceived={setPendingPreview}
+              onSnapshotSaved={async (savedDate) => {
+                setPendingPreview(null);
+                setSelectedDate(savedDate);
+                await fetchSnapshots();
+                setActiveTab('outstanding');
+              }}
+              onSnapshotDeleted={async () => {
+                await fetchSnapshots();
+                fetchOutstanding();
+              }}
+              showToast={showToast}
+            />
+            <MasterDataUpload />
+          </>
         )}
       </main>
 

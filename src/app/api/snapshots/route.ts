@@ -94,6 +94,9 @@ export async function POST(req: NextRequest) {
         branch,
         productVertical: String(r.productVertical || '').trim(),
         createdDate: r.createdDate ? String(r.createdDate).trim() : null,
+        accountNo: String(r.accountNo || '').trim(),
+        contactCount: Number(r.contactCount) || 0,
+        contactInfo: String(r.contactInfo || '').trim(),
       };
     });
 
