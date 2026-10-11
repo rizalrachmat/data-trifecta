@@ -35,7 +35,7 @@ export function pivotToAoa(p: PivotResponse, rowLabel: string): any[][] {
     ...(isNoCols ? ['Jumlah DCN'] : p.colKeys),
     ...(isNoCols ? [] : ['Grand Total']),
   ];
-cd data-trifecta
+
   const body = p.rowKeys.map((rk) => {
     const row: any[] = [rk];
     if (isNoCols) {
